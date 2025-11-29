@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight, Gamepad2, Users, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -6,6 +7,20 @@ import { createClient } from "@/lib/supabase/server";
 
 export default async function HomePage() {
   const supabase = await createClient();
+
+  // Check if user is logged in - redirect to their profile
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("handle")
+      .eq("id", user.id)
+      .single();
+    
+    if (profile?.handle) {
+      redirect(`/u/${profile.handle}`);
+    }
+  }
 
   // Fetch published games
   const { data: gamesData } = await supabase
