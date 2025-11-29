@@ -3,25 +3,31 @@ import Image from "next/image";
 import { Users, Gamepad2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 
+interface Profile {
+  id: string;
+  handle: string;
+  display_name: string;
+  avatar_url: string | null;
+  bio: string | null;
+}
+
 export default async function CreatorsPage() {
   const supabase = await createClient();
 
-  // Fetch all creators (users who are marked as creators)
-  const { data: creators } = await supabase
+  // Fetch all creators
+  const { data: creatorsData } = await supabase
     .from("creators")
-    .select(`
-      user_id,
-      profiles!creators_user_id_fkey (
-        id,
-        handle,
-        display_name,
-        avatar_url,
-        bio
-      )
-    `);
+    .select("user_id");
+
+  const creatorIds = creatorsData?.map(c => c.user_id) || [];
+
+  // Fetch profiles for these creators
+  const { data: profilesData } = await supabase
+    .from("profiles")
+    .select("id, handle, display_name, avatar_url, bio")
+    .in("id", creatorIds.length > 0 ? creatorIds : ["none"]);
 
   // Get game counts for each creator
-  const creatorIds = creators?.map(c => c.user_id) || [];
   const { data: gameCounts } = await supabase
     .from("games")
     .select("creator_id")
@@ -33,6 +39,9 @@ export default async function CreatorsPage() {
   gameCounts?.forEach(g => {
     gameCountMap.set(g.creator_id, (gameCountMap.get(g.creator_id) || 0) + 1);
   });
+
+  // Create profiles array
+  const creators = (profilesData || []) as Profile[];
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -47,19 +56,12 @@ export default async function CreatorsPage() {
 
       {creators && creators.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {creators.map((creator) => {
-            const profile = creator.profiles as {
-              id: string;
-              handle: string;
-              display_name: string;
-              avatar_url: string | null;
-              bio: string | null;
-            };
-            const gameCount = gameCountMap.get(creator.user_id) || 0;
+          {creators.map((profile) => {
+            const gameCount = gameCountMap.get(profile.id) || 0;
 
             return (
               <Link
-                key={creator.user_id}
+                key={profile.id}
                 href={`/u/${profile.handle}`}
                 className="group p-6 rounded-xl bg-card border border-border hover:border-primary/50 transition-colors"
               >
