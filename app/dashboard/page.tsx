@@ -36,6 +36,13 @@ import { useUser } from "@/hooks/use-user";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
+interface GameScores {
+  play_count: number;
+  total_reactions: number;
+  tier: string;
+  weighted_score: number;
+}
+
 interface Game {
   id: string;
   title: string;
@@ -46,12 +53,7 @@ interface Game {
   embed_url: string;
   created_at: string;
   published_at: string | null;
-  game_scores: {
-    play_count: number;
-    total_reactions: number;
-    tier: string;
-    weighted_score: number;
-  } | null;
+  game_scores: GameScores[] | null;
 }
 
 export default function DashboardPage() {
@@ -237,10 +239,10 @@ export default function DashboardPage() {
   // Calculate stats from games
   const stats = {
     total_games: games.length,
-    total_plays: games.reduce((sum, g) => sum + (g.game_scores?.play_count || 0), 0),
-    total_reactions: games.reduce((sum, g) => sum + (g.game_scores?.total_reactions || 0), 0),
+    total_plays: games.reduce((sum, g) => sum + (g.game_scores?.[0]?.play_count || 0), 0),
+    total_reactions: games.reduce((sum, g) => sum + (g.game_scores?.[0]?.total_reactions || 0), 0),
     average_score: games.length > 0 
-      ? Math.round(games.reduce((sum, g) => sum + (g.game_scores?.weighted_score || 0), 0) / games.length)
+      ? Math.round(games.reduce((sum, g) => sum + (g.game_scores?.[0]?.weighted_score || 0), 0) / games.length)
       : 0,
   };
 
@@ -413,17 +415,17 @@ export default function DashboardPage() {
                             <span className={game.status === "published" ? "text-tier-a" : "text-yellow-400"}>
                               {game.status === "published" ? "Published" : "Draft"}
                             </span>
-                            {game.game_scores?.tier && game.game_scores.tier !== "NEW" && (
+                            {game.game_scores?.[0]?.tier && game.game_scores[0].tier !== "NEW" && (
                               <>
                                 <span>•</span>
-                                <TierBadge tier={game.game_scores.tier} score={game.game_scores.weighted_score} size="sm" />
+                                <TierBadge tier={game.game_scores[0].tier} score={game.game_scores[0].weighted_score} size="sm" />
                               </>
                             )}
                           </div>
                         </div>
                         <div className="text-right text-sm text-muted-foreground">
-                          <div>{(game.game_scores?.play_count || 0).toLocaleString()} plays</div>
-                          <div>{(game.game_scores?.total_reactions || 0).toLocaleString()} reactions</div>
+                          <div>{(game.game_scores?.[0]?.play_count || 0).toLocaleString()} plays</div>
+                          <div>{(game.game_scores?.[0]?.total_reactions || 0).toLocaleString()} reactions</div>
                         </div>
                       </div>
                     ))}
@@ -540,14 +542,14 @@ export default function DashboardPage() {
                           <span className={game.status === "published" ? "text-tier-a" : "text-yellow-400"}>
                             {game.status === "published" ? "Published" : "Draft"}
                           </span>
-                          {game.game_scores?.tier && game.game_scores.tier !== "NEW" && (
+                          {game.game_scores?.[0]?.tier && game.game_scores[0].tier !== "NEW" && (
                             <>
                               <span>•</span>
-                              <TierBadge tier={game.game_scores.tier} score={game.game_scores.weighted_score} size="sm" />
+                              <TierBadge tier={game.game_scores[0].tier} score={game.game_scores[0].weighted_score} size="sm" />
                             </>
                           )}
                           <span>•</span>
-                          <span>{(game.game_scores?.play_count || 0).toLocaleString()} plays</span>
+                          <span>{(game.game_scores?.[0]?.play_count || 0).toLocaleString()} plays</span>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
