@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -14,6 +15,7 @@ import {
   Trash2,
   Play,
   Heart,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,62 +30,189 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { useUser } from "@/hooks/use-user";
+import { createClient } from "@/lib/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
-// Mock data
-const mockGames = [
-  {
-    id: "1",
-    title: "Space Invaders Remix",
-    slug: "space-invaders-remix",
-    status: "published",
-    thumbnail_url: "https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=200&h=112&fit=crop",
-    score: 92,
-    tier: "A",
-    play_count: 15420,
-    reaction_count: 892,
-    published_at: "2024-01-15",
-  },
-  {
-    id: "2",
-    title: "Asteroid Blaster",
-    slug: "asteroid-blaster",
-    status: "published",
-    thumbnail_url: "https://images.unsplash.com/photo-1614732414444-096e5f1122d5?w=200&h=112&fit=crop",
-    score: 85,
-    tier: "B",
-    play_count: 8200,
-    reaction_count: 445,
-    published_at: "2024-01-12",
-  },
-  {
-    id: "3",
-    title: "New Untitled Game",
-    slug: "new-untitled-game",
-    status: "draft",
-    thumbnail_url: null,
-    score: undefined,
-    tier: "NEW",
-    play_count: 0,
-    reaction_count: 0,
-    published_at: null,
-  },
-];
-
-const stats = {
-  total_games: 3,
-  total_plays: 23620,
-  total_reactions: 1337,
-  average_score: 88,
-};
+interface Game {
+  id: string;
+  title: string;
+  slug: string;
+  status: string;
+  thumbnail_url: string | null;
+  short_description: string | null;
+  embed_url: string;
+  created_at: string;
+  published_at: string | null;
+  game_scores: {
+    play_count: number;
+    total_reactions: number;
+    tier: string;
+    weighted_score: number;
+  } | null;
+}
 
 export default function DashboardPage() {
+  const router = useRouter();
+  const { user, loading: authLoading } = useUser();
+  const { toast } = useToast();
+  
   const [activeTab, setActiveTab] = useState<"overview" | "games" | "analytics" | "settings">("overview");
   const [showAddGame, setShowAddGame] = useState(false);
+  const [games, setGames] = useState<Game[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [newGame, setNewGame] = useState({
     title: "",
     embed_url: "",
     short_description: "",
   });
+
+  // Check if user is a creator
+  const isCreator = user?.user_metadata?.is_creator === true;
+
+  // Fetch user's games
+  useEffect(() => {
+    async function fetchGames() {
+      if (!user) return;
+      
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from("games")
+        .select(`
+          id,
+          title,
+          slug,
+          status,
+          thumbnail_url,
+          short_description,
+          embed_url,
+          created_at,
+          published_at,
+          game_scores (
+            play_count,
+            total_reactions,
+            tier,
+            weighted_score
+          )
+        `)
+        .eq("creator_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Error fetching games:", error);
+      } else {
+        setGames(data || []);
+      }
+      setLoading(false);
+    }
+
+    if (user) {
+      fetchGames();
+    }
+  }, [user]);
+
+  // Generate slug from title
+  const generateSlug = (title: string) => {
+    return title
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, "")
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-")
+      .trim();
+  };
+
+  // Handle game submission
+  const handleCreateGame = async () => {
+    if (!user || !newGame.title || !newGame.embed_url) {
+      toast({
+        title: "Missing fields",
+        description: "Please fill in the game title and embed URL.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSubmitting(true);
+    const supabase = createClient();
+    
+    const slug = generateSlug(newGame.title) + "-" + Date.now().toString(36);
+    
+    const { data, error } = await supabase
+      .from("games")
+      .insert({
+        creator_id: user.id,
+        title: newGame.title,
+        slug: slug,
+        embed_url: newGame.embed_url,
+        short_description: newGame.short_description || null,
+        status: "draft",
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Error creating game:", error);
+      toast({
+        title: "Error creating game",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Game created!",
+        description: "Your game has been saved as a draft.",
+      });
+      setGames([{ ...data, game_scores: null }, ...games]);
+      setNewGame({ title: "", embed_url: "", short_description: "" });
+      setShowAddGame(false);
+    }
+    
+    setSubmitting(false);
+  };
+
+  // Calculate stats from games
+  const stats = {
+    total_games: games.length,
+    total_plays: games.reduce((sum, g) => sum + (g.game_scores?.play_count || 0), 0),
+    total_reactions: games.reduce((sum, g) => sum + (g.game_scores?.total_reactions || 0), 0),
+    average_score: games.length > 0 
+      ? Math.round(games.reduce((sum, g) => sum + (g.game_scores?.weighted_score || 0), 0) / games.length)
+      : 0,
+  };
+
+  // Auth loading state
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Not logged in
+  if (!user) {
+    router.push("/login?message=Please log in to access the dashboard");
+    return null;
+  }
+
+  // Not a creator
+  if (!isCreator) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center max-w-md px-4">
+          <Gamepad2 className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+          <h1 className="text-2xl font-bold mb-2">Creator Access Required</h1>
+          <p className="text-muted-foreground mb-6">
+            You need a creator account to access the dashboard and submit games.
+          </p>
+          <Button onClick={() => router.push("/signup?creator=true")}>
+            Become a Creator
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen">
@@ -185,7 +314,17 @@ export default function DashboardPage() {
                     </Button>
                   </div>
                   <div className="space-y-3">
-                    {mockGames.slice(0, 3).map((game) => (
+                    {loading ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+                        Loading games...
+                      </div>
+                    ) : games.length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Gamepad2 className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p>No games yet. Add your first game!</p>
+                      </div>
+                    ) : games.slice(0, 3).map((game) => (
                       <div
                         key={game.id}
                         className="flex items-center gap-4 p-4 rounded-lg bg-card border border-border"
@@ -211,17 +350,17 @@ export default function DashboardPage() {
                             <span className={game.status === "published" ? "text-tier-a" : "text-yellow-400"}>
                               {game.status === "published" ? "Published" : "Draft"}
                             </span>
-                            {game.tier && game.tier !== "NEW" && (
+                            {game.game_scores?.tier && game.game_scores.tier !== "NEW" && (
                               <>
                                 <span>•</span>
-                                <TierBadge tier={game.tier} score={game.score} size="sm" />
+                                <TierBadge tier={game.game_scores.tier} score={game.game_scores.weighted_score} size="sm" />
                               </>
                             )}
                           </div>
                         </div>
                         <div className="text-right text-sm text-muted-foreground">
-                          <div>{game.play_count.toLocaleString()} plays</div>
-                          <div>{game.reaction_count.toLocaleString()} reactions</div>
+                          <div>{(game.game_scores?.play_count || 0).toLocaleString()} plays</div>
+                          <div>{(game.game_scores?.total_reactions || 0).toLocaleString()} reactions</div>
                         </div>
                       </div>
                     ))}
@@ -282,11 +421,18 @@ export default function DashboardPage() {
                         </div>
                       </div>
                       <DialogFooter>
-                        <Button variant="outline" onClick={() => setShowAddGame(false)}>
+                        <Button variant="outline" onClick={() => setShowAddGame(false)} disabled={submitting}>
                           Cancel
                         </Button>
-                        <Button onClick={() => setShowAddGame(false)}>
-                          Create Game
+                        <Button onClick={handleCreateGame} disabled={submitting}>
+                          {submitting ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Creating...
+                            </>
+                          ) : (
+                            "Create Game"
+                          )}
                         </Button>
                       </DialogFooter>
                     </DialogContent>
@@ -294,7 +440,18 @@ export default function DashboardPage() {
                 </div>
 
                 <div className="space-y-3">
-                  {mockGames.map((game) => (
+                  {loading ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+                      Loading games...
+                    </div>
+                  ) : games.length === 0 ? (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <Gamepad2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p className="text-lg mb-2">No games yet</p>
+                      <p className="text-sm mb-4">Click "Add Game" to submit your first game!</p>
+                    </div>
+                  ) : games.map((game) => (
                     <div
                       key={game.id}
                       className="flex items-center gap-4 p-4 rounded-lg bg-card border border-border"
@@ -320,14 +477,14 @@ export default function DashboardPage() {
                           <span className={game.status === "published" ? "text-tier-a" : "text-yellow-400"}>
                             {game.status === "published" ? "Published" : "Draft"}
                           </span>
-                          {game.tier && game.tier !== "NEW" && (
+                          {game.game_scores?.tier && game.game_scores.tier !== "NEW" && (
                             <>
                               <span>•</span>
-                              <TierBadge tier={game.tier} score={game.score} size="sm" />
+                              <TierBadge tier={game.game_scores.tier} score={game.game_scores.weighted_score} size="sm" />
                             </>
                           )}
                           <span>•</span>
-                          <span>{game.play_count.toLocaleString()} plays</span>
+                          <span>{(game.game_scores?.play_count || 0).toLocaleString()} plays</span>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
