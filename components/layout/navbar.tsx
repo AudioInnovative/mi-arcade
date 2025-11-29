@@ -16,7 +16,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 
 // Mock auth state - will be replaced with real Supabase auth
-const mockUser = null; // Set to { name: "Tyler", avatar: null, handle: "tyler" } to test logged in state
+type UserType = { name: string; avatar: string | null; handle: string } | null;
+const mockUser: UserType = null; // Set to { name: "Tyler", avatar: null, handle: "tyler" } to test logged in state
 
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
