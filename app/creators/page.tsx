@@ -1,7 +1,17 @@
 import Link from "next/link";
 import Image from "next/image";
+import { Metadata } from "next";
 import { Users, Gamepad2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+
+export const metadata: Metadata = {
+  title: "Game Creators",
+  description: "Meet the talented game creators on Mi Arcade. Follow your favorites and discover new games.",
+  openGraph: {
+    title: "Game Creators | Mi Arcade",
+    description: "Meet the talented game creators on Mi Arcade.",
+  },
+};
 
 interface Profile {
   id: string;

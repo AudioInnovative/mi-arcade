@@ -1,7 +1,17 @@
 import Link from "next/link";
+import { Metadata } from "next";
 import { Gamepad2 } from "lucide-react";
 import { GameCard } from "@/components/game/game-card";
 import { createClient } from "@/lib/supabase/server";
+
+export const metadata: Metadata = {
+  title: "Browse Games",
+  description: "Browse and play hundreds of free HTML5 games. Filter by genre and find your next favorite game.",
+  openGraph: {
+    title: "Browse Games | Mi Arcade",
+    description: "Browse and play hundreds of free HTML5 games on Mi Arcade.",
+  },
+};
 
 const GENRES = [
   "Action",

@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import Image from "next/image";
+import { Metadata } from "next";
 import { Gamepad2 } from "lucide-react";
 import { GameCard } from "@/components/game/game-card";
 import { FollowButton } from "@/components/user/follow-button";
@@ -7,6 +8,55 @@ import { createClient } from "@/lib/supabase/server";
 
 interface CreatorPageProps {
   params: Promise<{ handle: string }>;
+}
+
+export async function generateMetadata({ params }: CreatorPageProps): Promise<Metadata> {
+  const { handle } = await params;
+  const supabase = await createClient();
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("display_name, bio, avatar_url")
+    .eq("handle", handle)
+    .single();
+
+  if (!profile) {
+    return { title: "Creator Not Found | Mi Arcade" };
+  }
+
+  const { count: gameCount } = await supabase
+    .from("games")
+    .select("*", { count: "exact", head: true })
+    .eq("creator_id", profile.display_name);
+
+  const title = `${profile.display_name} (@${handle}) | Mi Arcade`;
+  const description = profile.bio || `Check out games by ${profile.display_name} on Mi Arcade`;
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title: profile.display_name,
+      description,
+      type: "profile",
+      url: `https://miarcade.me/u/${handle}`,
+      images: profile.avatar_url ? [
+        {
+          url: profile.avatar_url,
+          width: 400,
+          height: 400,
+          alt: profile.display_name,
+        }
+      ] : [],
+      siteName: "Mi Arcade",
+    },
+    twitter: {
+      card: "summary",
+      title: profile.display_name,
+      description,
+      images: profile.avatar_url ? [profile.avatar_url] : [],
+    },
+  };
 }
 
 export default async function CreatorPage({ params }: CreatorPageProps) {

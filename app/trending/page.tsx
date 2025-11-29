@@ -1,6 +1,16 @@
+import { Metadata } from "next";
 import { Gamepad2, TrendingUp } from "lucide-react";
 import { GameCard } from "@/components/game/game-card";
 import { createClient } from "@/lib/supabase/server";
+
+export const metadata: Metadata = {
+  title: "Trending Games",
+  description: "Discover the most popular games on Mi Arcade. See what everyone is playing right now.",
+  openGraph: {
+    title: "Trending Games | Mi Arcade",
+    description: "Discover the most popular games on Mi Arcade right now.",
+  },
+};
 
 export default async function TrendingPage() {
   const supabase = await createClient();

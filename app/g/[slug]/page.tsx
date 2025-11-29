@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { Metadata } from "next";
 import { Gamepad2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ReportDialog } from "@/components/report-dialog";
@@ -15,6 +16,57 @@ import { createClient } from "@/lib/supabase/server";
 
 interface GamePageProps {
   params: Promise<{ slug: string }>;
+}
+
+export async function generateMetadata({ params }: GamePageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const supabase = await createClient();
+
+  const { data: game } = await supabase
+    .from("games")
+    .select("title, short_description, thumbnail_url, creator_id")
+    .eq("slug", slug)
+    .single();
+
+  if (!game) {
+    return { title: "Game Not Found | Mi Arcade" };
+  }
+
+  const { data: creator } = await supabase
+    .from("profiles")
+    .select("display_name")
+    .eq("id", game.creator_id)
+    .single();
+
+  const title = `${game.title} | Mi Arcade`;
+  const description = game.short_description || `Play ${game.title} on Mi Arcade`;
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title: game.title,
+      description,
+      type: "website",
+      url: `https://miarcade.me/g/${slug}`,
+      images: game.thumbnail_url ? [
+        {
+          url: game.thumbnail_url,
+          width: 1200,
+          height: 630,
+          alt: game.title,
+        }
+      ] : [],
+      siteName: "Mi Arcade",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: game.title,
+      description,
+      images: game.thumbnail_url ? [game.thumbnail_url] : [],
+      creator: creator?.display_name,
+    },
+  };
 }
 
 export default async function GamePage({ params }: GamePageProps) {
