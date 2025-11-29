@@ -2,95 +2,48 @@ import Link from "next/link";
 import { ArrowRight, Gamepad2, Users, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GameCard } from "@/components/game/game-card";
+import { createClient } from "@/lib/supabase/server";
 
-// Mock data for demo
-const mockGames = [
-  {
-    id: "1",
-    creator_id: "c1",
-    title: "Space Invaders Remix",
-    slug: "space-invaders-remix",
-    short_description: "A modern take on the classic arcade shooter",
-    long_description: null,
-    thumbnail_url: "https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=400&h=225&fit=crop",
-    embed_url: "https://example.com/game1",
-    status: "published" as const,
-    genres: ["Shooter", "Arcade"],
-    tags: ["retro", "space"],
-    published_at: "2024-01-15",
-    created_at: "2024-01-10",
-    updated_at: "2024-01-15",
-    creator: { handle: "retrodev", display_name: "RetroGameDev" },
-    score: 92,
-    tier: "A",
-    play_count: 15420,
-    reaction_count: 892,
-  },
-  {
-    id: "2",
-    creator_id: "c2",
-    title: "Pixel Dungeon Quest",
-    slug: "pixel-dungeon-quest",
-    short_description: "Explore procedurally generated dungeons",
-    long_description: null,
-    thumbnail_url: "https://images.unsplash.com/photo-1511512578047-dfb367046420?w=400&h=225&fit=crop",
-    embed_url: "https://example.com/game2",
-    status: "published" as const,
-    genres: ["RPG", "Roguelike"],
-    tags: ["pixel", "dungeon"],
-    published_at: "2024-01-20",
-    created_at: "2024-01-18",
-    updated_at: "2024-01-20",
-    creator: { handle: "pixelmaster", display_name: "PixelMaster" },
-    score: 88,
-    tier: "A",
-    play_count: 8930,
-    reaction_count: 567,
-  },
-  {
-    id: "3",
-    creator_id: "c3",
-    title: "Neon Racer",
-    slug: "neon-racer",
-    short_description: "High-speed racing through neon cityscapes",
-    long_description: null,
-    thumbnail_url: "https://images.unsplash.com/photo-1493711662062-fa541f7f7d25?w=400&h=225&fit=crop",
-    embed_url: "https://example.com/game3",
-    status: "published" as const,
-    genres: ["Racing", "Arcade"],
-    tags: ["neon", "speed"],
-    published_at: "2024-01-22",
-    created_at: "2024-01-21",
-    updated_at: "2024-01-22",
-    creator: { handle: "speedking", display_name: "SpeedKing" },
-    score: 78,
-    tier: "B",
-    play_count: 5621,
-    reaction_count: 321,
-  },
-  {
-    id: "4",
-    creator_id: "c4",
-    title: "Puzzle Blocks",
-    slug: "puzzle-blocks",
-    short_description: "Relaxing puzzle game with colorful blocks",
-    long_description: null,
-    thumbnail_url: "https://images.unsplash.com/photo-1611996575749-79a3a250f948?w=400&h=225&fit=crop",
-    embed_url: "https://example.com/game4",
-    status: "published" as const,
-    genres: ["Puzzle", "Casual"],
-    tags: ["relaxing", "colorful"],
-    published_at: "2024-01-25",
-    created_at: "2024-01-24",
-    updated_at: "2024-01-25",
-    creator: { handle: "puzzlemaker", display_name: "PuzzleMaker" },
+export default async function HomePage() {
+  const supabase = await createClient();
+
+  // Fetch published games
+  const { data: gamesData } = await supabase
+    .from("games")
+    .select("*")
+    .eq("status", "published")
+    .order("created_at", { ascending: false })
+    .limit(8);
+
+  // Fetch creators for these games
+  const creatorIds = [...new Set(gamesData?.map(g => g.creator_id) || [])];
+  const { data: creatorsData } = await supabase
+    .from("profiles")
+    .select("id, handle, display_name")
+    .in("id", creatorIds.length > 0 ? creatorIds : ["none"]);
+
+  // Create a map of creator_id to creator
+  const creatorsMap = new Map(creatorsData?.map(c => [c.id, c]) || []);
+
+  // Transform games with creator info
+  const games = (gamesData || []).map(game => ({
+    ...game,
+    creator: creatorsMap.get(game.creator_id) || { handle: "unknown", display_name: "Unknown" },
     tier: "NEW",
-    play_count: 1240,
-    reaction_count: 89,
-  },
-];
+    score: 0,
+    play_count: 0,
+    reaction_count: 0,
+  }));
 
-export default function HomePage() {
+  // Get stats
+  const { count: gamesCount } = await supabase
+    .from("games")
+    .select("*", { count: "exact", head: true })
+    .eq("status", "published");
+
+  const { count: creatorsCount } = await supabase
+    .from("creators")
+    .select("*", { count: "exact", head: true });
   return (
     <div className="flex flex-col">
       {/* Hero Section */}
@@ -131,22 +84,22 @@ export default function HomePage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             <div className="text-center">
               <Gamepad2 className="h-8 w-8 mx-auto mb-2 text-neon-cyan" />
-              <div className="text-2xl md:text-3xl font-bold font-heading">500+</div>
+              <div className="text-2xl md:text-3xl font-bold font-heading">{gamesCount || 0}</div>
               <div className="text-sm text-muted-foreground">Games</div>
             </div>
             <div className="text-center">
               <Users className="h-8 w-8 mx-auto mb-2 text-neon-purple" />
-              <div className="text-2xl md:text-3xl font-bold font-heading">10K+</div>
+              <div className="text-2xl md:text-3xl font-bold font-heading">-</div>
               <div className="text-sm text-muted-foreground">Players</div>
             </div>
             <div className="text-center">
               <TrendingUp className="h-8 w-8 mx-auto mb-2 text-neon-cyan" />
-              <div className="text-2xl md:text-3xl font-bold font-heading">1M+</div>
+              <div className="text-2xl md:text-3xl font-bold font-heading">-</div>
               <div className="text-sm text-muted-foreground">Plays</div>
             </div>
             <div className="text-center">
               <Users className="h-8 w-8 mx-auto mb-2 text-neon-purple" />
-              <div className="text-2xl md:text-3xl font-bold font-heading">200+</div>
+              <div className="text-2xl md:text-3xl font-bold font-heading">{creatorsCount || 0}</div>
               <div className="text-sm text-muted-foreground">Creators</div>
             </div>
           </div>
@@ -170,9 +123,16 @@ export default function HomePage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {mockGames.map((game) => (
-              <GameCard key={game.id} game={game} />
-            ))}
+            {games.length > 0 ? (
+              games.slice(0, 4).map((game) => (
+                <GameCard key={game.id} game={game} />
+              ))
+            ) : (
+              <div className="col-span-full text-center py-12 text-muted-foreground">
+                <Gamepad2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>No games yet. Be the first to publish!</p>
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -194,12 +154,16 @@ export default function HomePage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {mockGames.slice(2).map((game) => (
-              <GameCard key={game.id} game={game} />
-            ))}
-            {mockGames.slice(0, 2).map((game) => (
-              <GameCard key={game.id + "-new"} game={{ ...game, tier: "NEW", score: undefined }} />
-            ))}
+            {games.length > 0 ? (
+              games.slice(0, 4).map((game) => (
+                <GameCard key={game.id} game={game} />
+              ))
+            ) : (
+              <div className="col-span-full text-center py-12 text-muted-foreground">
+                <Gamepad2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>No new releases yet.</p>
+              </div>
+            )}
           </div>
         </div>
       </section>
