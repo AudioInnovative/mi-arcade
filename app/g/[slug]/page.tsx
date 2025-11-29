@@ -1,11 +1,13 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { Expand, Flag, MessageSquare, Gamepad2 } from "lucide-react";
+import { Expand, Flag, Gamepad2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TierBadge } from "@/components/game/tier-badge";
 import { ReactionBar } from "@/components/game/reaction-bar";
 import { GameCard } from "@/components/game/game-card";
 import { PlayTracker } from "@/components/game/play-tracker";
+import { Comments } from "@/components/game/comments";
+import { BookmarkButton } from "@/components/game/bookmark-button";
 import { createClient } from "@/lib/supabase/server";
 
 interface GamePageProps {
@@ -46,6 +48,7 @@ export default async function GamePage({ params }: GamePageProps) {
   // Get current user's reaction
   const { data: { user } } = await supabase.auth.getUser();
   let userReaction = "none";
+  let isBookmarked = false;
   if (user) {
     const { data: reactionData } = await supabase
       .from("reactions")
@@ -54,6 +57,14 @@ export default async function GamePage({ params }: GamePageProps) {
       .eq("game_id", game.id)
       .single();
     userReaction = reactionData?.reaction || "none";
+
+    const { data: bookmarkData } = await supabase
+      .from("bookmarks")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("game_id", game.id)
+      .single();
+    isBookmarked = !!bookmarkData;
   }
 
   // Fetch more games by this creator
@@ -127,6 +138,7 @@ export default async function GamePage({ params }: GamePageProps) {
             }}
           />
           <div className="flex items-center gap-2">
+            <BookmarkButton gameId={game.id} initialBookmarked={isBookmarked} />
             <Button variant="ghost" size="sm">
               <Flag className="h-4 w-4 mr-2" />
               Report
@@ -175,21 +187,8 @@ export default async function GamePage({ params }: GamePageProps) {
         </div>
 
         {/* Comments Section */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-heading text-xl font-semibold flex items-center gap-2">
-              <MessageSquare className="h-5 w-5" />
-              Comments
-            </h2>
-          </div>
-          <div className="p-8 rounded-lg bg-card border border-border text-center">
-            <p className="text-muted-foreground mb-4">
-              No comments yet. Be the first to share your thoughts!
-            </p>
-            <Button variant="outline">
-              <Link href="/login">Sign in to comment</Link>
-            </Button>
-          </div>
+        <div className="mb-8 p-6 rounded-lg bg-card border border-border">
+          <Comments gameId={game.id} currentUserId={user?.id} />
         </div>
 
         {/* More Games by Creator */}
