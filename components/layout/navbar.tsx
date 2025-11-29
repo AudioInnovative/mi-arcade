@@ -90,7 +90,7 @@ export function Navbar() {
                 </div>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link href={`/@${user.handle}`}>
+                  <Link href={`/u/${user.handle}`}>
                     <User className="mr-2 h-4 w-4" />
                     Profile
                   </Link>
@@ -194,7 +194,7 @@ export function Navbar() {
             <>
               <hr className="border-border" />
               <Link
-                href={`/@${user.handle}`}
+                href={`/u/${user.handle}`}
                 className="text-sm font-medium transition-colors hover:text-primary"
                 onClick={() => setMobileMenuOpen(false)}
               >

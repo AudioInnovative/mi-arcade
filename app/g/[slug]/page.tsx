@@ -113,7 +113,7 @@ export default async function GamePage({ params }: GamePageProps) {
           </h1>
           <div className="flex items-center gap-4 text-muted-foreground">
             <Link
-              href={`/@${game.creator.handle}`}
+              href={`/u/${game.creator.handle}`}
               className="hover:text-primary transition-colors"
             >
               @{game.creator.handle}
@@ -224,7 +224,7 @@ export default async function GamePage({ params }: GamePageProps) {
               More by @{game.creator.handle}
             </h2>
             <Button variant="ghost" asChild>
-              <Link href={`/@${game.creator.handle}`}>View Profile</Link>
+              <Link href={`/u/${game.creator.handle}`}>View Profile</Link>
             </Button>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
