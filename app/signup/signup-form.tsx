@@ -1,14 +1,19 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Gamepad2, Mail, Lock, User, AtSign, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { createClient } from "@/lib/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 export function SignupForm() {
+  const router = useRouter();
+  const { toast } = useToast();
   const searchParams = useSearchParams();
   const isCreator = searchParams.get("creator") === "true";
 
@@ -20,12 +25,42 @@ export function SignupForm() {
   });
   const [wantsCreator, setWantsCreator] = useState(isCreator);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    // TODO: Implement Supabase auth
-    console.log("Signup:", { ...formData, isCreator: wantsCreator });
+    setError(null);
+
+    const supabase = createClient();
+
+    // Sign up the user
+    const { data, error: signUpError } = await supabase.auth.signUp({
+      email: formData.email,
+      password: formData.password,
+      options: {
+        data: {
+          display_name: formData.displayName,
+          handle: formData.handle,
+          is_creator: wantsCreator,
+        },
+      },
+    });
+
+    if (signUpError) {
+      setError(signUpError.message);
+      setLoading(false);
+      return;
+    }
+
+    if (data.user) {
+      toast({
+        title: "Account created!",
+        description: "Check your email to confirm your account.",
+      });
+      router.push("/login?message=Check your email to confirm your account");
+    }
+
     setLoading(false);
   };
 
@@ -47,6 +82,11 @@ export function SignupForm() {
         {/* Form */}
         <div className="bg-card border border-border rounded-xl p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
+            {error && (
+              <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500 text-sm">
+                {error}
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="displayName">Display Name</Label>
               <div className="relative">

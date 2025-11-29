@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Menu, Search, X, Gamepad2, User, LogOut, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -14,16 +15,26 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
-
-// Mock auth state - will be replaced with real Supabase auth
-type UserType = { name: string; avatar: string | null; handle: string } | null;
-const mockUser: UserType = null; // Set to { name: "Tyler", avatar: null, handle: "tyler" } to test logged in state
+import { useUser } from "@/hooks/use-user";
+import { createClient } from "@/lib/supabase/client";
 
 export function Navbar() {
+  const router = useRouter();
+  const { user, loading } = useUser();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
 
-  const user = mockUser;
+  const handleSignOut = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/");
+    router.refresh();
+  };
+
+  // Get user display info from metadata
+  const displayName = user?.user_metadata?.display_name || user?.email?.split("@")[0] || "User";
+  const handle = user?.user_metadata?.handle || user?.email?.split("@")[0] || "user";
+  const avatarUrl = user?.user_metadata?.avatar_url;
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -74,9 +85,9 @@ export function Navbar() {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-9 w-9 rounded-full">
                   <Avatar className="h-9 w-9 border-2 border-primary/50">
-                    <AvatarImage src={user.avatar || undefined} alt={user.name} />
+                    <AvatarImage src={avatarUrl || undefined} alt={displayName} />
                     <AvatarFallback className="bg-primary/20 text-primary">
-                      {user.name.charAt(0).toUpperCase()}
+                      {displayName.charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                 </Button>
@@ -84,13 +95,13 @@ export function Navbar() {
               <DropdownMenuContent className="w-56" align="end" forceMount>
                 <div className="flex items-center justify-start gap-2 p-2">
                   <div className="flex flex-col space-y-1 leading-none">
-                    <p className="font-medium">{user.name}</p>
-                    <p className="text-xs text-muted-foreground">@{user.handle}</p>
+                    <p className="font-medium">{displayName}</p>
+                    <p className="text-xs text-muted-foreground">@{handle}</p>
                   </div>
                 </div>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link href={`/u/${user.handle}`}>
+                  <Link href={`/u/${handle}`}>
                     <User className="mr-2 h-4 w-4" />
                     Profile
                   </Link>
@@ -102,12 +113,17 @@ export function Navbar() {
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-destructive focus:text-destructive">
+                <DropdownMenuItem 
+                  className="text-destructive focus:text-destructive cursor-pointer"
+                  onClick={handleSignOut}
+                >
                   <LogOut className="mr-2 h-4 w-4" />
                   Log out
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+          ) : loading ? (
+            <div className="h-9 w-9 rounded-full bg-muted animate-pulse" />
           ) : (
             <div className="flex items-center gap-2">
               <Button variant="ghost" asChild>
@@ -194,7 +210,7 @@ export function Navbar() {
             <>
               <hr className="border-border" />
               <Link
-                href={`/u/${user.handle}`}
+                href={`/u/${handle}`}
                 className="text-sm font-medium transition-colors hover:text-primary"
                 onClick={() => setMobileMenuOpen(false)}
               >
