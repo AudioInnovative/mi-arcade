@@ -66,6 +66,8 @@ export default function DashboardPage() {
   const [games, setGames] = useState<Game[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+  const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
   const [newGame, setNewGame] = useState({
     title: "",
     embed_url: "",
@@ -126,6 +128,19 @@ export default function DashboardPage() {
       .trim();
   };
 
+  // Handle thumbnail file selection
+  const handleThumbnailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setThumbnailFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setThumbnailPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   // Handle game submission
   const handleCreateGame = async () => {
     if (!user || !newGame.title || !newGame.embed_url) {
@@ -141,6 +156,35 @@ export default function DashboardPage() {
     const supabase = createClient();
     
     const slug = generateSlug(newGame.title) + "-" + Date.now().toString(36);
+    let thumbnailUrl: string | null = null;
+
+    // Upload thumbnail if provided
+    if (thumbnailFile) {
+      const fileExt = thumbnailFile.name.split(".").pop();
+      const filePath = `${user.id}/${slug}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from("game-thumbnails")
+        .upload(filePath, thumbnailFile);
+
+      if (uploadError) {
+        console.error("Error uploading thumbnail:", uploadError);
+        toast({
+          title: "Error uploading thumbnail",
+          description: uploadError.message,
+          variant: "destructive",
+        });
+        setSubmitting(false);
+        return;
+      }
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from("game-thumbnails")
+        .getPublicUrl(filePath);
+      
+      thumbnailUrl = publicUrl;
+    }
     
     const { data, error } = await supabase
       .from("games")
@@ -150,6 +194,7 @@ export default function DashboardPage() {
         slug: slug,
         embed_url: newGame.embed_url,
         short_description: newGame.short_description || null,
+        thumbnail_url: thumbnailUrl,
         status: "draft",
       })
       .select()
@@ -169,6 +214,8 @@ export default function DashboardPage() {
       });
       setGames([{ ...data, game_scores: null }, ...games]);
       setNewGame({ title: "", embed_url: "", short_description: "" });
+      setThumbnailFile(null);
+      setThumbnailPreview(null);
       setShowAddGame(false);
     }
     
@@ -483,6 +530,44 @@ export default function DashboardPage() {
                             value={newGame.short_description}
                             onChange={(e) => setNewGame({ ...newGame, short_description: e.target.value })}
                           />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="thumbnail">Thumbnail Image</Label>
+                          <div className="flex items-center gap-4">
+                            {thumbnailPreview ? (
+                              <div className="relative w-24 h-14 rounded overflow-hidden bg-muted">
+                                <img
+                                  src={thumbnailPreview}
+                                  alt="Preview"
+                                  className="w-full h-full object-cover"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setThumbnailFile(null);
+                                    setThumbnailPreview(null);
+                                  }}
+                                  className="absolute top-0 right-0 p-1 bg-black/50 text-white rounded-bl text-xs"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="w-24 h-14 rounded bg-muted flex items-center justify-center">
+                                <Gamepad2 className="h-6 w-6 text-muted-foreground" />
+                              </div>
+                            )}
+                            <Input
+                              id="thumbnail"
+                              type="file"
+                              accept="image/*"
+                              onChange={handleThumbnailChange}
+                              className="flex-1"
+                            />
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Recommended: 400x225px (16:9 ratio)
+                          </p>
                         </div>
                       </div>
                       <DialogFooter>
