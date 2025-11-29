@@ -35,6 +35,7 @@ import {
 import { useUser } from "@/hooks/use-user";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { checkEmbedUrl } from "@/lib/embed-check";
 
 interface GameScores {
   play_count: number;
@@ -277,6 +278,24 @@ export default function DashboardPage() {
       return;
     }
 
+    // Check if embed URL is allowed
+    const embedCheck = checkEmbedUrl(newGame.embed_url);
+    if (!embedCheck.allowed) {
+      toast({
+        title: "URL not allowed",
+        description: embedCheck.reason,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (embedCheck.warning) {
+      toast({
+        title: "Warning",
+        description: embedCheck.warning,
+      });
+    }
+
     setSubmitting(true);
     const supabase = createClient();
     
@@ -430,6 +449,17 @@ export default function DashboardPage() {
       toast({
         title: "Missing fields",
         description: "Please fill in the game title and embed URL.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check if embed URL is allowed
+    const embedCheck = checkEmbedUrl(editForm.embed_url);
+    if (!embedCheck.allowed) {
+      toast({
+        title: "URL not allowed",
+        description: embedCheck.reason,
         variant: "destructive",
       });
       return;

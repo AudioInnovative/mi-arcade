@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Menu, Search, X, Gamepad2, User, LogOut, LayoutDashboard, Bookmark } from "lucide-react";
+import { Menu, Search, X, Gamepad2, User, LogOut, LayoutDashboard, Bookmark, Rss } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -132,6 +132,12 @@ export function Navbar() {
                   <Link href="/library">
                     <Bookmark className="mr-2 h-4 w-4" />
                     My Library
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/feed">
+                    <Rss className="mr-2 h-4 w-4" />
+                    My Feed
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
