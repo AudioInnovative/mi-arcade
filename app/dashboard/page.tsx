@@ -68,11 +68,35 @@ export default function DashboardPage() {
   const [submitting, setSubmitting] = useState(false);
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
+  const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
   const [newGame, setNewGame] = useState({
     title: "",
     embed_url: "",
     short_description: "",
   });
+
+  // Available genres
+  const GENRES = [
+    "Action",
+    "Adventure", 
+    "Arcade",
+    "Board",
+    "Card",
+    "Casual",
+    "Educational",
+    "Fighting",
+    "Horror",
+    "Multiplayer",
+    "Music",
+    "Platformer",
+    "Puzzle",
+    "Racing",
+    "RPG",
+    "Shooter",
+    "Simulation",
+    "Sports",
+    "Strategy",
+  ];
 
   // Check if user is a creator
   const isCreator = user?.user_metadata?.is_creator === true;
@@ -195,6 +219,7 @@ export default function DashboardPage() {
         embed_url: newGame.embed_url,
         short_description: newGame.short_description || null,
         thumbnail_url: thumbnailUrl,
+        genres: selectedGenres.length > 0 ? selectedGenres : null,
         status: "draft",
       })
       .select()
@@ -216,6 +241,7 @@ export default function DashboardPage() {
       setNewGame({ title: "", embed_url: "", short_description: "" });
       setThumbnailFile(null);
       setThumbnailPreview(null);
+      setSelectedGenres([]);
       setShowAddGame(false);
     }
     
@@ -530,6 +556,36 @@ export default function DashboardPage() {
                             value={newGame.short_description}
                             onChange={(e) => setNewGame({ ...newGame, short_description: e.target.value })}
                           />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Genres (select up to 3)</Label>
+                          <div className="flex flex-wrap gap-2">
+                            {GENRES.map((genre) => (
+                              <button
+                                key={genre}
+                                type="button"
+                                onClick={() => {
+                                  if (selectedGenres.includes(genre)) {
+                                    setSelectedGenres(selectedGenres.filter(g => g !== genre));
+                                  } else if (selectedGenres.length < 3) {
+                                    setSelectedGenres([...selectedGenres, genre]);
+                                  }
+                                }}
+                                className={`px-3 py-1 rounded-full text-sm border transition-colors ${
+                                  selectedGenres.includes(genre)
+                                    ? "bg-primary text-primary-foreground border-primary"
+                                    : "bg-muted text-muted-foreground border-border hover:border-primary/50"
+                                }`}
+                              >
+                                {genre}
+                              </button>
+                            ))}
+                          </div>
+                          {selectedGenres.length > 0 && (
+                            <p className="text-xs text-muted-foreground">
+                              Selected: {selectedGenres.join(", ")}
+                            </p>
+                          )}
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="thumbnail">Thumbnail Image</Label>
