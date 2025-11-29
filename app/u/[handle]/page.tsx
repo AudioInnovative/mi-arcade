@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
 import Image from "next/image";
-import { Users, Gamepad2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Gamepad2 } from "lucide-react";
 import { GameCard } from "@/components/game/game-card";
+import { FollowButton } from "@/components/user/follow-button";
 import { createClient } from "@/lib/supabase/server";
 
 interface CreatorPageProps {
@@ -41,6 +41,30 @@ export default async function CreatorPage({ params }: CreatorPageProps) {
     play_count: 0,
     reaction_count: 0,
   }));
+
+  // Check if current user follows this creator
+  const { data: { user } } = await supabase.auth.getUser();
+  let isFollowing = false;
+  let followerCount = 0;
+
+  // Get follower count
+  const { count } = await supabase
+    .from("follows")
+    .select("*", { count: "exact", head: true })
+    .eq("following_id", profile.id);
+  followerCount = count || 0;
+
+  if (user && user.id !== profile.id) {
+    const { data: followData } = await supabase
+      .from("follows")
+      .select("id")
+      .eq("follower_id", user.id)
+      .eq("following_id", profile.id)
+      .single();
+    isFollowing = !!followData;
+  }
+
+  const isOwnProfile = user?.id === profile.id;
 
   // Default theme if none set
   const theme = {
@@ -101,18 +125,16 @@ export default async function CreatorPage({ params }: CreatorPageProps) {
             </div>
 
             {/* Actions */}
-            <div className="flex items-center gap-3">
-              <Button
-                variant="outline"
-                style={{
-                  borderColor: theme.primary_color,
-                  color: theme.primary_color,
-                }}
-              >
-                <Users className="h-4 w-4 mr-2" />
-                Follow
-              </Button>
-            </div>
+            {!isOwnProfile && (
+              <div className="flex items-center gap-3">
+                <FollowButton 
+                  userId={profile.id}
+                  initialFollowing={isFollowing}
+                  initialCount={followerCount}
+                  showCount
+                />
+              </div>
+            )}
           </div>
         </div>
 

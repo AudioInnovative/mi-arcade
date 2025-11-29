@@ -17,6 +17,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { useUser } from "@/hooks/use-user";
 import { createClient } from "@/lib/supabase/client";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export function Navbar() {
   const router = useRouter();
@@ -90,6 +91,9 @@ export function Navbar() {
               className="w-64 pl-9 bg-muted/50 border-border focus:border-primary"
             />
           </form>
+
+          {/* Theme Toggle */}
+          <ThemeToggle />
 
           {/* Auth */}
           {user ? (

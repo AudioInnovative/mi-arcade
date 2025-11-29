@@ -1,13 +1,16 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { Expand, Flag, Gamepad2 } from "lucide-react";
+import { Gamepad2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ReportDialog } from "@/components/report-dialog";
 import { TierBadge } from "@/components/game/tier-badge";
 import { ReactionBar } from "@/components/game/reaction-bar";
 import { GameCard } from "@/components/game/game-card";
 import { PlayTracker } from "@/components/game/play-tracker";
 import { Comments } from "@/components/game/comments";
 import { BookmarkButton } from "@/components/game/bookmark-button";
+import { ShareButtons } from "@/components/game/share-buttons";
+import { FullscreenButton } from "@/components/game/fullscreen-button";
 import { createClient } from "@/lib/supabase/server";
 
 interface GamePageProps {
@@ -106,7 +109,7 @@ export default async function GamePage({ params }: GamePageProps) {
         </div>
 
         {/* Game Frame */}
-        <div className="relative mb-6 rounded-xl overflow-hidden border border-border bg-black">
+        <div id="game-frame" className="relative mb-6 rounded-xl overflow-hidden border border-border bg-black">
           <div className="aspect-video">
             <iframe
               src={game.embed_url}
@@ -116,14 +119,7 @@ export default async function GamePage({ params }: GamePageProps) {
               title={game.title}
             />
           </div>
-          <Button
-            size="icon"
-            variant="secondary"
-            className="absolute top-4 right-4 bg-black/50 hover:bg-black/70"
-            title="Fullscreen"
-          >
-            <Expand className="h-5 w-5" />
-          </Button>
+          <FullscreenButton targetId="game-frame" />
         </div>
 
         {/* Reaction Bar */}
@@ -139,10 +135,8 @@ export default async function GamePage({ params }: GamePageProps) {
           />
           <div className="flex items-center gap-2">
             <BookmarkButton gameId={game.id} initialBookmarked={isBookmarked} />
-            <Button variant="ghost" size="sm">
-              <Flag className="h-4 w-4 mr-2" />
-              Report
-            </Button>
+            <ShareButtons title={game.title} slug={game.slug} />
+            <ReportDialog targetType="game" targetId={game.id} targetName={game.title} />
           </div>
         </div>
 

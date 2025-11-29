@@ -1008,11 +1008,94 @@ export default function DashboardPage() {
             {activeTab === "analytics" && (
               <div>
                 <h2 className="font-heading text-xl font-semibold mb-6">Analytics</h2>
-                <div className="p-8 rounded-lg bg-card border border-border text-center">
-                  <BarChart3 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">
-                    Detailed analytics coming soon. Track plays, reactions, and score history for each game.
-                  </p>
+                
+                {/* Summary Cards */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                  <div className="p-4 rounded-lg bg-card border border-border">
+                    <div className="text-2xl font-bold text-neon-cyan">{games.length}</div>
+                    <div className="text-sm text-muted-foreground">Total Games</div>
+                  </div>
+                  <div className="p-4 rounded-lg bg-card border border-border">
+                    <div className="text-2xl font-bold text-neon-purple">
+                      {games.filter(g => g.status === "published").length}
+                    </div>
+                    <div className="text-sm text-muted-foreground">Published</div>
+                  </div>
+                  <div className="p-4 rounded-lg bg-card border border-border">
+                    <div className="text-2xl font-bold text-green-400">
+                      {games.reduce((sum, g) => sum + (g.game_scores?.[0]?.play_count || 0), 0)}
+                    </div>
+                    <div className="text-sm text-muted-foreground">Total Plays</div>
+                  </div>
+                  <div className="p-4 rounded-lg bg-card border border-border">
+                    <div className="text-2xl font-bold text-pink-400">
+                      {games.reduce((sum, g) => sum + (g.game_scores?.[0]?.total_reactions || 0), 0)}
+                    </div>
+                    <div className="text-sm text-muted-foreground">Total Reactions</div>
+                  </div>
+                </div>
+
+                {/* Per-Game Analytics */}
+                <h3 className="font-semibold mb-4">Game Performance</h3>
+                <div className="space-y-3">
+                  {games.length === 0 ? (
+                    <div className="p-8 rounded-lg bg-card border border-border text-center">
+                      <BarChart3 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                      <p className="text-muted-foreground">
+                        No games yet. Create your first game to see analytics.
+                      </p>
+                    </div>
+                  ) : (
+                    games
+                      .sort((a, b) => (b.game_scores?.[0]?.play_count || 0) - (a.game_scores?.[0]?.play_count || 0))
+                      .map((game) => {
+                        const scores = game.game_scores?.[0];
+                        return (
+                          <div key={game.id} className="p-4 rounded-lg bg-card border border-border">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-3">
+                                <div className="w-12 h-12 rounded-lg overflow-hidden bg-muted">
+                                  {game.thumbnail_url ? (
+                                    <img 
+                                      src={game.thumbnail_url} 
+                                      alt="" 
+                                      className="w-full h-full object-cover" 
+                                    />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center">
+                                      <Gamepad2 className="h-6 w-6 text-muted-foreground" />
+                                    </div>
+                                  )}
+                                </div>
+                                <div>
+                                  <div className="font-medium">{game.title}</div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {game.status === "published" ? "Published" : "Draft"}
+                                  </div>
+                                </div>
+                              </div>
+                              {scores?.tier && scores.tier !== "NEW" && (
+                                <TierBadge tier={scores.tier} size="sm" />
+                              )}
+                            </div>
+                            <div className="grid grid-cols-3 gap-4 text-center">
+                              <div>
+                                <div className="text-lg font-semibold">{scores?.play_count || 0}</div>
+                                <div className="text-xs text-muted-foreground">Plays</div>
+                              </div>
+                              <div>
+                                <div className="text-lg font-semibold">{scores?.total_reactions || 0}</div>
+                                <div className="text-xs text-muted-foreground">Reactions</div>
+                              </div>
+                              <div>
+                                <div className="text-lg font-semibold">{scores?.weighted_score || 0}</div>
+                                <div className="text-xs text-muted-foreground">Score</div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })
+                  )}
                 </div>
               </div>
             )}
