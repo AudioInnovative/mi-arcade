@@ -68,7 +68,8 @@ export default function DashboardPage() {
   const [submitting, setSubmitting] = useState(false);
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
-  const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
+  const [primaryGenre, setPrimaryGenre] = useState<string>("");
+  const [secondaryGenre, setSecondaryGenre] = useState<string>("");
   const [newGame, setNewGame] = useState({
     title: "",
     embed_url: "",
@@ -219,7 +220,7 @@ export default function DashboardPage() {
         embed_url: newGame.embed_url,
         short_description: newGame.short_description || null,
         thumbnail_url: thumbnailUrl,
-        genres: selectedGenres.length > 0 ? selectedGenres : null,
+        genres: primaryGenre ? [primaryGenre, ...(secondaryGenre ? [secondaryGenre] : [])] : null,
         status: "draft",
       })
       .select()
@@ -241,7 +242,8 @@ export default function DashboardPage() {
       setNewGame({ title: "", embed_url: "", short_description: "" });
       setThumbnailFile(null);
       setThumbnailPreview(null);
-      setSelectedGenres([]);
+      setPrimaryGenre("");
+      setSecondaryGenre("");
       setShowAddGame(false);
     }
     
@@ -557,35 +559,45 @@ export default function DashboardPage() {
                             onChange={(e) => setNewGame({ ...newGame, short_description: e.target.value })}
                           />
                         </div>
-                        <div className="space-y-2">
-                          <Label>Genres (select up to 3)</Label>
-                          <div className="flex flex-wrap gap-2">
-                            {GENRES.map((genre) => (
-                              <button
-                                key={genre}
-                                type="button"
-                                onClick={() => {
-                                  if (selectedGenres.includes(genre)) {
-                                    setSelectedGenres(selectedGenres.filter(g => g !== genre));
-                                  } else if (selectedGenres.length < 3) {
-                                    setSelectedGenres([...selectedGenres, genre]);
-                                  }
-                                }}
-                                className={`px-3 py-1 rounded-full text-sm border transition-colors ${
-                                  selectedGenres.includes(genre)
-                                    ? "bg-primary text-primary-foreground border-primary"
-                                    : "bg-muted text-muted-foreground border-border hover:border-primary/50"
-                                }`}
-                              >
-                                {genre}
-                              </button>
-                            ))}
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="primaryGenre">Primary Genre *</Label>
+                            <select
+                              id="primaryGenre"
+                              value={primaryGenre}
+                              onChange={(e) => {
+                                setPrimaryGenre(e.target.value);
+                                if (e.target.value === secondaryGenre) {
+                                  setSecondaryGenre("");
+                                }
+                              }}
+                              className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
+                            >
+                              <option value="">Select genre...</option>
+                              {GENRES.map((genre) => (
+                                <option key={genre} value={genre}>
+                                  {genre}
+                                </option>
+                              ))}
+                            </select>
                           </div>
-                          {selectedGenres.length > 0 && (
-                            <p className="text-xs text-muted-foreground">
-                              Selected: {selectedGenres.join(", ")}
-                            </p>
-                          )}
+                          <div className="space-y-2">
+                            <Label htmlFor="secondaryGenre">Secondary Genre</Label>
+                            <select
+                              id="secondaryGenre"
+                              value={secondaryGenre}
+                              onChange={(e) => setSecondaryGenre(e.target.value)}
+                              className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
+                              disabled={!primaryGenre}
+                            >
+                              <option value="">None</option>
+                              {GENRES.filter(g => g !== primaryGenre).map((genre) => (
+                                <option key={genre} value={genre}>
+                                  {genre}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="thumbnail">Thumbnail Image</Label>
