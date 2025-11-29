@@ -23,6 +23,16 @@ export function Navbar() {
   const { user, loading } = useUser();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      router.push(`/games?q=${encodeURIComponent(searchQuery.trim())}`);
+      setSearchQuery("");
+      setSearchOpen(false);
+    }
+  };
 
   const handleSignOut = async () => {
     const supabase = createClient();
@@ -70,14 +80,16 @@ export function Navbar() {
         {/* Desktop Right Section */}
         <div className="hidden md:flex items-center gap-4">
           {/* Search */}
-          <div className="relative">
+          <form onSubmit={handleSearch} className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="search"
               placeholder="Search games..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="w-64 pl-9 bg-muted/50 border-border focus:border-primary"
             />
-          </div>
+          </form>
 
           {/* Auth */}
           {user ? (
@@ -166,14 +178,16 @@ export function Navbar() {
           searchOpen ? "max-h-16 p-4" : "max-h-0"
         )}
       >
-        <div className="relative">
+        <form onSubmit={handleSearch} className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             type="search"
             placeholder="Search games..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-9 bg-muted/50"
           />
-        </div>
+        </form>
       </div>
 
       {/* Mobile Menu */}

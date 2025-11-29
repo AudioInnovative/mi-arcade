@@ -26,11 +26,11 @@ const GENRES = [
 ];
 
 interface GamesPageProps {
-  searchParams: Promise<{ genre?: string }>;
+  searchParams: Promise<{ genre?: string; q?: string }>;
 }
 
 export default async function GamesPage({ searchParams }: GamesPageProps) {
-  const { genre } = await searchParams;
+  const { genre, q: searchQuery } = await searchParams;
   const supabase = await createClient();
 
   // Build query
@@ -43,6 +43,11 @@ export default async function GamesPage({ searchParams }: GamesPageProps) {
   // Filter by genre if provided
   if (genre) {
     query = query.contains("genres", [genre]);
+  }
+
+  // Filter by search query if provided
+  if (searchQuery) {
+    query = query.ilike("title", `%${searchQuery}%`);
   }
 
   const { data: gamesData } = await query;
@@ -74,10 +79,12 @@ export default async function GamesPage({ searchParams }: GamesPageProps) {
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
         <h1 className="font-heading text-3xl md:text-4xl font-bold mb-2">
-          Browse Games
+          {searchQuery ? `Search: "${searchQuery}"` : "Browse Games"}
         </h1>
         <p className="text-muted-foreground">
-          Discover amazing games from creators around the world
+          {searchQuery 
+            ? `Found ${games.length} game${games.length !== 1 ? "s" : ""} matching your search`
+            : "Discover amazing games from creators around the world"}
         </p>
       </div>
 

@@ -63,6 +63,8 @@ export default function DashboardPage() {
   
   const [activeTab, setActiveTab] = useState<"overview" | "games" | "analytics" | "settings">("overview");
   const [showAddGame, setShowAddGame] = useState(false);
+  const [showEditGame, setShowEditGame] = useState(false);
+  const [editingGame, setEditingGame] = useState<Game | null>(null);
   const [games, setGames] = useState<Game[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -75,6 +77,19 @@ export default function DashboardPage() {
     embed_url: "",
     short_description: "",
   });
+  const [editForm, setEditForm] = useState({
+    title: "",
+    embed_url: "",
+    short_description: "",
+  });
+  const [profile, setProfile] = useState({
+    display_name: "",
+    bio: "",
+    avatar_url: "",
+  });
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [savingProfile, setSavingProfile] = useState(false);
 
   // Available genres
   const GENRES = [
@@ -138,10 +153,95 @@ export default function DashboardPage() {
       setLoading(false);
     }
 
+    async function fetchProfile() {
+      if (!user) return;
+      
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("display_name, bio, avatar_url")
+        .eq("id", user.id)
+        .single();
+
+      if (!error && data) {
+        setProfile({
+          display_name: data.display_name || "",
+          bio: data.bio || "",
+          avatar_url: data.avatar_url || "",
+        });
+        setAvatarPreview(data.avatar_url);
+      }
+    }
+
     if (user) {
       fetchGames();
+      fetchProfile();
     }
   }, [user]);
+
+  // Handle avatar file selection
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setAvatarFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAvatarPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Handle save profile
+  const handleSaveProfile = async () => {
+    if (!user) return;
+
+    setSavingProfile(true);
+    const supabase = createClient();
+    let avatarUrl = profile.avatar_url;
+
+    // Upload new avatar if provided
+    if (avatarFile) {
+      const fileExt = avatarFile.name.split(".").pop();
+      const filePath = `${user.id}/avatar.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from("game-thumbnails")
+        .upload(filePath, avatarFile, { upsert: true });
+
+      if (!uploadError) {
+        const { data: { publicUrl } } = supabase.storage
+          .from("game-thumbnails")
+          .getPublicUrl(filePath);
+        avatarUrl = publicUrl;
+      }
+    }
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        display_name: profile.display_name,
+        bio: profile.bio,
+        avatar_url: avatarUrl,
+      })
+      .eq("id", user.id);
+
+    if (error) {
+      toast({
+        title: "Error saving profile",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      setProfile({ ...profile, avatar_url: avatarUrl });
+      toast({
+        title: "Profile saved!",
+        description: "Your changes have been saved.",
+      });
+    }
+
+    setSavingProfile(false);
+  };
 
   // Generate slug from title
   const generateSlug = (title: string) => {
@@ -309,6 +409,86 @@ export default function DashboardPage() {
         description: "Your game has been removed.",
       });
     }
+  };
+
+  // Start editing a game
+  const startEditingGame = (game: Game) => {
+    setEditingGame(game);
+    setEditForm({
+      title: game.title,
+      embed_url: game.embed_url,
+      short_description: game.short_description || "",
+    });
+    setThumbnailPreview(game.thumbnail_url);
+    setThumbnailFile(null);
+    setShowEditGame(true);
+  };
+
+  // Handle edit game submission
+  const handleEditGame = async () => {
+    if (!editingGame || !editForm.title || !editForm.embed_url) {
+      toast({
+        title: "Missing fields",
+        description: "Please fill in the game title and embed URL.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSubmitting(true);
+    const supabase = createClient();
+    let thumbnailUrl = editingGame.thumbnail_url;
+
+    // Upload new thumbnail if provided
+    if (thumbnailFile && user) {
+      const fileExt = thumbnailFile.name.split(".").pop();
+      const filePath = `${user.id}/${editingGame.slug}-${Date.now()}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from("game-thumbnails")
+        .upload(filePath, thumbnailFile);
+
+      if (!uploadError) {
+        const { data: { publicUrl } } = supabase.storage
+          .from("game-thumbnails")
+          .getPublicUrl(filePath);
+        thumbnailUrl = publicUrl;
+      }
+    }
+
+    const { error } = await supabase
+      .from("games")
+      .update({
+        title: editForm.title,
+        embed_url: editForm.embed_url,
+        short_description: editForm.short_description || null,
+        thumbnail_url: thumbnailUrl,
+      })
+      .eq("id", editingGame.id);
+
+    if (error) {
+      toast({
+        title: "Error updating game",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Game updated!",
+        description: "Your changes have been saved.",
+      });
+      setGames(games.map(g => 
+        g.id === editingGame.id 
+          ? { ...g, ...editForm, thumbnail_url: thumbnailUrl }
+          : g
+      ));
+      setShowEditGame(false);
+      setEditingGame(null);
+      setThumbnailFile(null);
+      setThumbnailPreview(null);
+    }
+
+    setSubmitting(false);
   };
 
   // Calculate stats from games
@@ -655,6 +835,84 @@ export default function DashboardPage() {
                       </DialogFooter>
                     </DialogContent>
                   </Dialog>
+
+                  {/* Edit Game Dialog */}
+                  <Dialog open={showEditGame} onOpenChange={setShowEditGame}>
+                    <DialogContent className="sm:max-w-lg">
+                      <DialogHeader>
+                        <DialogTitle>Edit Game</DialogTitle>
+                        <DialogDescription>
+                          Update your game details.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="edit-title">Game Title</Label>
+                          <Input
+                            id="edit-title"
+                            value={editForm.title}
+                            onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="edit-embed_url">Embed URL</Label>
+                          <Input
+                            id="edit-embed_url"
+                            value={editForm.embed_url}
+                            onChange={(e) => setEditForm({ ...editForm, embed_url: e.target.value })}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="edit-description">Short Description</Label>
+                          <Input
+                            id="edit-description"
+                            value={editForm.short_description}
+                            onChange={(e) => setEditForm({ ...editForm, short_description: e.target.value })}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="edit-thumbnail">Thumbnail Image</Label>
+                          <div className="flex items-center gap-4">
+                            {thumbnailPreview ? (
+                              <div className="relative w-24 h-14 rounded overflow-hidden bg-muted">
+                                <img
+                                  src={thumbnailPreview}
+                                  alt="Preview"
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                            ) : (
+                              <div className="w-24 h-14 rounded bg-muted flex items-center justify-center">
+                                <Gamepad2 className="h-6 w-6 text-muted-foreground" />
+                              </div>
+                            )}
+                            <Input
+                              id="edit-thumbnail"
+                              type="file"
+                              accept="image/*"
+                              onChange={handleThumbnailChange}
+                              className="flex-1"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowEditGame(false)} disabled={submitting}>
+                          Cancel
+                        </Button>
+                        <Button onClick={handleEditGame} disabled={submitting}>
+                          {submitting ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Saving...
+                            </>
+                          ) : (
+                            "Save Changes"
+                          )}
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
                 </div>
 
                 <div className="space-y-3">
@@ -725,6 +983,14 @@ export default function DashboardPage() {
                         </Button>
                         <Button 
                           variant="ghost" 
+                          size="icon"
+                          onClick={() => startEditingGame(game)}
+                          title="Edit game"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
                           size="icon" 
                           className="text-destructive hover:text-destructive"
                           onClick={() => handleDeleteGame(game.id)}
@@ -758,37 +1024,61 @@ export default function DashboardPage() {
                 <div className="max-w-xl space-y-6">
                   <div className="p-6 rounded-lg bg-card border border-border space-y-4">
                     <h3 className="font-semibold">Profile Information</h3>
+                    
+                    {/* Avatar */}
+                    <div className="space-y-2">
+                      <Label>Avatar</Label>
+                      <div className="flex items-center gap-4">
+                        <div className="w-20 h-20 rounded-full overflow-hidden bg-muted flex items-center justify-center">
+                          {avatarPreview ? (
+                            <img
+                              src={avatarPreview}
+                              alt="Avatar"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <span className="text-2xl font-bold text-muted-foreground">
+                              {profile.display_name?.charAt(0) || "?"}
+                            </span>
+                          )}
+                        </div>
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleAvatarChange}
+                          className="flex-1"
+                        />
+                      </div>
+                    </div>
+                    
                     <div className="space-y-2">
                       <Label htmlFor="display_name">Display Name</Label>
-                      <Input id="display_name" defaultValue="RetroGameDev" />
+                      <Input 
+                        id="display_name" 
+                        value={profile.display_name}
+                        onChange={(e) => setProfile({ ...profile, display_name: e.target.value })}
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="bio">Bio</Label>
-                      <Input
+                      <textarea
                         id="bio"
-                        defaultValue="Indie game developer specializing in retro-style arcade games."
+                        value={profile.bio}
+                        onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
+                        className="w-full min-h-[100px] px-3 py-2 rounded-md border border-input bg-background text-sm"
+                        placeholder="Tell others about yourself..."
                       />
                     </div>
-                    <Button>Save Changes</Button>
-                  </div>
-
-                  <div className="p-6 rounded-lg bg-card border border-border space-y-4">
-                    <h3 className="font-semibold">Theme</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Choose a theme for your creator profile page.
-                    </p>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                      {["Neon Cyan & Purple", "Galaxy Purple", "Pixel Green", "Minimal Dark", "Minimal Light"].map(
-                        (theme) => (
-                          <button
-                            key={theme}
-                            className="p-3 rounded-lg border border-border text-sm hover:border-primary transition-colors text-left"
-                          >
-                            {theme}
-                          </button>
-                        )
+                    <Button onClick={handleSaveProfile} disabled={savingProfile}>
+                      {savingProfile ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Saving...
+                        </>
+                      ) : (
+                        "Save Changes"
                       )}
-                    </div>
+                    </Button>
                   </div>
                 </div>
               </div>

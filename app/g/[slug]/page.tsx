@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { TierBadge } from "@/components/game/tier-badge";
 import { ReactionBar } from "@/components/game/reaction-bar";
 import { GameCard } from "@/components/game/game-card";
+import { PlayTracker } from "@/components/game/play-tracker";
 import { createClient } from "@/lib/supabase/server";
 
 interface GamePageProps {
@@ -53,6 +54,7 @@ export default async function GamePage({ params }: GamePageProps) {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      <PlayTracker gameId={game.id} />
       <div className="max-w-5xl mx-auto">
         {/* Header */}
         <div className="mb-6">
