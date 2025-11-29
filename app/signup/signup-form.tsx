@@ -32,6 +32,14 @@ export function SignupForm() {
     setLoading(true);
     setError(null);
 
+    // Validate handle format
+    const handleRegex = /^[a-z0-9_]{3,20}$/;
+    if (!handleRegex.test(formData.handle)) {
+      setError("Username must be 3-20 characters, lowercase letters, numbers, and underscores only");
+      setLoading(false);
+      return;
+    }
+
     const supabase = createClient();
 
     // Sign up the user
