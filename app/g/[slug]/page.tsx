@@ -37,11 +37,24 @@ export default async function GamePage({ params }: GamePageProps) {
   // Fetch game scores
   const { data: scoresData } = await supabase
     .from("game_scores")
-    .select("play_count, total_reactions, tier, weighted_score")
+    .select("play_count, total_reactions, tier, weighted_score, like_count, love_count, favorite_count")
     .eq("game_id", game.id)
     .single();
 
   const scores = scoresData;
+
+  // Get current user's reaction
+  const { data: { user } } = await supabase.auth.getUser();
+  let userReaction = "none";
+  if (user) {
+    const { data: reactionData } = await supabase
+      .from("reactions")
+      .select("reaction")
+      .eq("user_id", user.id)
+      .eq("game_id", game.id)
+      .single();
+    userReaction = reactionData?.reaction || "none";
+  }
 
   // Fetch more games by this creator
   const { data: moreGames } = await supabase
@@ -104,7 +117,15 @@ export default async function GamePage({ params }: GamePageProps) {
 
         {/* Reaction Bar */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8 p-4 rounded-lg bg-card border border-border">
-          <ReactionBar />
+          <ReactionBar 
+            gameId={game.id}
+            initialReaction={userReaction as "none" | "like" | "love" | "favorite"}
+            counts={{
+              like: scores?.like_count || 0,
+              love: scores?.love_count || 0,
+              favorite: scores?.favorite_count || 0,
+            }}
+          />
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm">
               <Flag className="h-4 w-4 mr-2" />
