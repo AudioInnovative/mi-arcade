@@ -15,23 +15,10 @@ export default async function GamePage({ params }: GamePageProps) {
   const { slug } = await params;
   const supabase = await createClient();
 
-  // Fetch game with creator info
+  // Fetch game
   const { data: game, error } = await supabase
     .from("games")
-    .select(`
-      *,
-      profiles!games_creator_id_fkey (
-        handle,
-        display_name,
-        avatar_url
-      ),
-      game_scores (
-        play_count,
-        total_reactions,
-        tier,
-        weighted_score
-      )
-    `)
+    .select("*")
     .eq("slug", slug)
     .single();
 
@@ -39,30 +26,30 @@ export default async function GamePage({ params }: GamePageProps) {
     notFound();
   }
 
+  // Fetch creator profile
+  const { data: creator } = await supabase
+    .from("profiles")
+    .select("handle, display_name, avatar_url")
+    .eq("id", game.creator_id)
+    .single();
+
+  // Fetch game scores
+  const { data: scoresData } = await supabase
+    .from("game_scores")
+    .select("play_count, total_reactions, tier, weighted_score")
+    .eq("game_id", game.id)
+    .single();
+
+  const scores = scoresData;
+
   // Fetch more games by this creator
   const { data: moreGames } = await supabase
     .from("games")
-    .select(`
-      *,
-      profiles!games_creator_id_fkey (
-        handle,
-        display_name
-      ),
-      game_scores (
-        play_count,
-        total_reactions,
-        tier,
-        weighted_score
-      )
-    `)
+    .select("*")
     .eq("creator_id", game.creator_id)
     .eq("status", "published")
     .neq("id", game.id)
     .limit(3);
-
-  // Transform data for display
-  const creator = game.profiles;
-  const scores = game.game_scores;
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -199,11 +186,11 @@ export default async function GamePage({ params }: GamePageProps) {
                   key={g.id} 
                   game={{
                     ...g,
-                    creator: g.profiles,
-                    score: g.game_scores?.weighted_score,
-                    tier: g.game_scores?.tier || "NEW",
-                    play_count: g.game_scores?.play_count || 0,
-                    reaction_count: g.game_scores?.total_reactions || 0,
+                    creator: creator,
+                    score: 0,
+                    tier: "NEW",
+                    play_count: 0,
+                    reaction_count: 0,
                   }} 
                 />
               ))}
