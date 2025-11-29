@@ -1,93 +1,11 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { Expand, Flag, MessageSquare } from "lucide-react";
+import { Expand, Flag, MessageSquare, Gamepad2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TierBadge } from "@/components/game/tier-badge";
 import { ReactionBar } from "@/components/game/reaction-bar";
 import { GameCard } from "@/components/game/game-card";
-
-// Mock data - will be replaced with real Supabase queries
-const mockGame = {
-  id: "1",
-  creator_id: "c1",
-  title: "Space Invaders Remix",
-  slug: "space-invaders-remix",
-  short_description: "A modern take on the classic arcade shooter",
-  long_description: `
-    Experience the classic arcade shooter reimagined for the modern web!
-
-    **Features:**
-    - Smooth 60fps gameplay
-    - Multiple power-ups and weapons
-    - Online leaderboards
-    - 50+ levels of increasing difficulty
-    - Boss battles every 10 levels
-
-    Use arrow keys or WASD to move, Space to shoot. Have fun!
-  `,
-  thumbnail_url: "https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=800&h=450&fit=crop",
-  embed_url: "https://playpager.com/embed/breakout-game/",
-  status: "published" as const,
-  genres: ["Shooter", "Arcade"],
-  tags: ["retro", "space", "classic", "action"],
-  published_at: "2024-01-15",
-  created_at: "2024-01-10",
-  updated_at: "2024-01-15",
-  creator: {
-    handle: "retrodev",
-    display_name: "RetroGameDev",
-    avatar_url: null,
-  },
-  score: 92,
-  tier: "A",
-  play_count: 15420,
-  reaction_count: 892,
-};
-
-const moreGames = [
-  {
-    id: "2",
-    creator_id: "c1",
-    title: "Asteroid Blaster",
-    slug: "asteroid-blaster",
-    short_description: "Destroy asteroids in this arcade classic",
-    long_description: null,
-    thumbnail_url: "https://images.unsplash.com/photo-1614732414444-096e5f1122d5?w=400&h=225&fit=crop",
-    embed_url: "https://example.com/game2",
-    status: "published" as const,
-    genres: ["Shooter"],
-    tags: ["space"],
-    published_at: "2024-01-12",
-    created_at: "2024-01-10",
-    updated_at: "2024-01-12",
-    creator: { handle: "retrodev", display_name: "RetroGameDev" },
-    score: 85,
-    tier: "B",
-    play_count: 8200,
-    reaction_count: 445,
-  },
-  {
-    id: "3",
-    creator_id: "c1",
-    title: "Galaga Redux",
-    slug: "galaga-redux",
-    short_description: "The sequel nobody asked for but everyone needs",
-    long_description: null,
-    thumbnail_url: "https://images.unsplash.com/photo-1579373903781-fd5c0c30c4cd?w=400&h=225&fit=crop",
-    embed_url: "https://example.com/game3",
-    status: "published" as const,
-    genres: ["Shooter"],
-    tags: ["retro"],
-    published_at: "2024-01-08",
-    created_at: "2024-01-05",
-    updated_at: "2024-01-08",
-    creator: { handle: "retrodev", display_name: "RetroGameDev" },
-    score: 79,
-    tier: "B",
-    play_count: 6100,
-    reaction_count: 298,
-  },
-];
+import { createClient } from "@/lib/supabase/server";
 
 interface GamePageProps {
   params: Promise<{ slug: string }>;
@@ -95,13 +13,56 @@ interface GamePageProps {
 
 export default async function GamePage({ params }: GamePageProps) {
   const { slug } = await params;
+  const supabase = await createClient();
 
-  // In production, fetch game from Supabase
-  const game = mockGame.slug === slug ? mockGame : null;
+  // Fetch game with creator info
+  const { data: game, error } = await supabase
+    .from("games")
+    .select(`
+      *,
+      profiles!games_creator_id_fkey (
+        handle,
+        display_name,
+        avatar_url
+      ),
+      game_scores (
+        play_count,
+        total_reactions,
+        tier,
+        weighted_score
+      )
+    `)
+    .eq("slug", slug)
+    .single();
 
-  if (!game) {
+  if (error || !game) {
     notFound();
   }
+
+  // Fetch more games by this creator
+  const { data: moreGames } = await supabase
+    .from("games")
+    .select(`
+      *,
+      profiles!games_creator_id_fkey (
+        handle,
+        display_name
+      ),
+      game_scores (
+        play_count,
+        total_reactions,
+        tier,
+        weighted_score
+      )
+    `)
+    .eq("creator_id", game.creator_id)
+    .eq("status", "published")
+    .neq("id", game.id)
+    .limit(3);
+
+  // Transform data for display
+  const creator = game.profiles;
+  const scores = game.game_scores;
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -112,13 +73,17 @@ export default async function GamePage({ params }: GamePageProps) {
             {game.title}
           </h1>
           <div className="flex items-center gap-4 text-muted-foreground">
-            <Link
-              href={`/u/${game.creator.handle}`}
-              className="hover:text-primary transition-colors"
-            >
-              @{game.creator.handle}
-            </Link>
-            <TierBadge tier={game.tier} score={game.score} size="md" />
+            {creator && (
+              <Link
+                href={`/u/${creator.handle}`}
+                className="hover:text-primary transition-colors"
+              >
+                @{creator.handle}
+              </Link>
+            )}
+            {scores?.tier && scores.tier !== "NEW" && (
+              <TierBadge tier={scores.tier} score={scores.weighted_score} size="md" />
+            )}
           </div>
         </div>
 
@@ -173,7 +138,7 @@ export default async function GamePage({ params }: GamePageProps) {
 
           {/* Tags */}
           <div className="flex flex-wrap gap-2 mt-4">
-            {game.genres.map((genre) => (
+            {game.genres?.map((genre: string) => (
               <Link
                 key={genre}
                 href={`/games?genre=${genre.toLowerCase()}`}
@@ -182,7 +147,7 @@ export default async function GamePage({ params }: GamePageProps) {
                 {genre}
               </Link>
             ))}
-            {game.tags.map((tag) => (
+            {game.tags?.map((tag: string) => (
               <Link
                 key={tag}
                 href={`/games?tag=${tag}`}
@@ -218,21 +183,33 @@ export default async function GamePage({ params }: GamePageProps) {
         </div>
 
         {/* More Games by Creator */}
-        <div>
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="font-heading text-xl font-semibold">
-              More by @{game.creator.handle}
-            </h2>
-            <Button variant="ghost" asChild>
-              <Link href={`/u/${game.creator.handle}`}>View Profile</Link>
-            </Button>
+        {creator && moreGames && moreGames.length > 0 && (
+          <div>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="font-heading text-xl font-semibold">
+                More by @{creator.handle}
+              </h2>
+              <Button variant="ghost" asChild>
+                <Link href={`/u/${creator.handle}`}>View Profile</Link>
+              </Button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {moreGames.map((g) => (
+                <GameCard 
+                  key={g.id} 
+                  game={{
+                    ...g,
+                    creator: g.profiles,
+                    score: g.game_scores?.weighted_score,
+                    tier: g.game_scores?.tier || "NEW",
+                    play_count: g.game_scores?.play_count || 0,
+                    reaction_count: g.game_scores?.total_reactions || 0,
+                  }} 
+                />
+              ))}
+            </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {moreGames.map((g) => (
-              <GameCard key={g.id} game={g} />
-            ))}
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );

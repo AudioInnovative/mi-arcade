@@ -16,6 +16,8 @@ import {
   Play,
   Heart,
   Loader2,
+  Globe,
+  GlobeLock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -169,6 +171,67 @@ export default function DashboardPage() {
     }
     
     setSubmitting(false);
+  };
+
+  // Handle publish/unpublish toggle
+  const handleTogglePublish = async (gameId: string, currentStatus: string) => {
+    const supabase = createClient();
+    const newStatus = currentStatus === "published" ? "draft" : "published";
+    
+    const { error } = await supabase
+      .from("games")
+      .update({ 
+        status: newStatus,
+        published_at: newStatus === "published" ? new Date().toISOString() : null
+      })
+      .eq("id", gameId);
+
+    if (error) {
+      toast({
+        title: "Error updating game",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      setGames(games.map(g => 
+        g.id === gameId 
+          ? { ...g, status: newStatus, published_at: newStatus === "published" ? new Date().toISOString() : null }
+          : g
+      ));
+      toast({
+        title: newStatus === "published" ? "Game published!" : "Game unpublished",
+        description: newStatus === "published" 
+          ? "Your game is now visible to everyone." 
+          : "Your game is now a draft.",
+      });
+    }
+  };
+
+  // Handle delete game
+  const handleDeleteGame = async (gameId: string) => {
+    if (!confirm("Are you sure you want to delete this game? This cannot be undone.")) {
+      return;
+    }
+
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("games")
+      .delete()
+      .eq("id", gameId);
+
+    if (error) {
+      toast({
+        title: "Error deleting game",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      setGames(games.filter(g => g.id !== gameId));
+      toast({
+        title: "Game deleted",
+        description: "Your game has been removed.",
+      });
+    }
   };
 
   // Calculate stats from games
@@ -488,15 +551,29 @@ export default function DashboardPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          onClick={() => handleTogglePublish(game.id, game.status)}
+                          title={game.status === "published" ? "Unpublish" : "Publish"}
+                        >
+                          {game.status === "published" ? (
+                            <Globe className="h-4 w-4 text-tier-a" />
+                          ) : (
+                            <GlobeLock className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </Button>
                         <Button variant="ghost" size="icon" asChild>
                           <Link href={`/g/${game.slug}`}>
                             <Eye className="h-4 w-4" />
                           </Link>
                         </Button>
-                        <Button variant="ghost" size="icon">
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => handleDeleteGame(game.id)}
+                        >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
