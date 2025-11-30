@@ -3,7 +3,32 @@
 @tailwind utilities;
 
 @layer base {
+  /* Light theme */
   :root {
+    --background: 0 0% 100%;
+    --foreground: 240 10% 10%;
+    --card: 0 0% 98%;
+    --card-foreground: 240 10% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 10%;
+    --primary: 186 100% 40%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 270 60% 55%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 240 5% 92%;
+    --muted-foreground: 240 5% 45%;
+    --accent: 270 60% 55%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 5% 85%;
+    --input: 240 5% 85%;
+    --ring: 186 100% 40%;
+    --radius: 0.75rem;
+  }
+
+  /* Dark theme */
+  .dark {
     --background: 240 10% 4%;
     --foreground: 0 0% 98%;
     --card: 240 10% 8%;
@@ -23,7 +48,6 @@
     --border: 240 10% 20%;
     --input: 240 10% 20%;
     --ring: 186 100% 50%;
-    --radius: 0.75rem;
   }
 }
 
@@ -72,16 +96,16 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: hsl(240 10% 8%);
+  background: hsl(var(--muted));
 }
 
 ::-webkit-scrollbar-thumb {
-  background: hsl(240 10% 25%);
+  background: hsl(var(--border));
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(240 10% 35%);
+  background: hsl(var(--muted-foreground));
 }
 
 /* Hide scrollbar for horizontal scroll containers */
