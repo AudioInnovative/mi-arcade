@@ -55,8 +55,8 @@ export default function ContactPage() {
               <p className="text-muted-foreground text-sm">
                 For general inquiries and support
               </p>
-              <a href="mailto:support@miarcade.me" className="text-primary hover:underline">
-                support@miarcade.me
+              <a href="mailto:audio.innovative@gmail.com" className="text-primary hover:underline">
+                audio.innovative@gmail.com
               </a>
             </div>
           </div>
