@@ -167,6 +167,7 @@ export default async function GamePage({ params }: GamePageProps) {
               className="w-full h-full"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
               allowFullScreen
+              sandbox="allow-scripts allow-same-origin allow-pointer-lock allow-forms"
               title={game.title}
             />
           </div>

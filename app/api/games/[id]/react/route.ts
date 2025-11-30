@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
+
+const VALID_REACTIONS = ["none", "like", "love", "favorite"] as const;
+type ReactionType = typeof VALID_REACTIONS[number];
 
 export async function POST(
   request: NextRequest,
@@ -9,10 +13,24 @@ export async function POST(
   const { reaction } = await request.json();
   const supabase = await createClient();
 
+  // Validate reaction type
+  if (!VALID_REACTIONS.includes(reaction as ReactionType)) {
+    return NextResponse.json({ error: "Invalid reaction type" }, { status: 400 });
+  }
+
   // Get current user
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Rate limit by user ID
+  const rateLimit = checkRateLimit(`reactions:${user.id}`, RATE_LIMITS.api);
+  if (!rateLimit.success) {
+    return NextResponse.json(
+      { error: "Too many requests. Please slow down." },
+      { status: 429 }
+    );
   }
 
   // Check if user already has a reaction for this game

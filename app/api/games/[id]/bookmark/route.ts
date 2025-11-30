@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
 // GET bookmark status
 export async function GET(
@@ -35,6 +36,15 @@ export async function POST(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Rate limit by user ID
+  const rateLimit = checkRateLimit(`bookmark:${user.id}`, RATE_LIMITS.api);
+  if (!rateLimit.success) {
+    return NextResponse.json(
+      { error: "Too many requests. Please slow down." },
+      { status: 429 }
+    );
   }
 
   // Check if already bookmarked

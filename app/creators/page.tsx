@@ -24,12 +24,12 @@ interface Profile {
 export default async function CreatorsPage() {
   const supabase = await createClient();
 
-  // Fetch all creators
+  // Fetch all creators (id references profiles.id)
   const { data: creatorsData } = await supabase
     .from("creators")
-    .select("user_id");
+    .select("id");
 
-  const creatorIds = creatorsData?.map(c => c.user_id) || [];
+  const creatorIds = creatorsData?.map(c => c.id) || [];
 
   // Fetch profiles for these creators
   const { data: profilesData } = await supabase

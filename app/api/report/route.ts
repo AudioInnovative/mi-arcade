@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
   const { targetType, targetId, reason, details } = await request.json();
@@ -8,6 +9,15 @@ export async function POST(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Rate limit by user ID
+  const rateLimit = checkRateLimit(`reports:${user.id}`, RATE_LIMITS.reports);
+  if (!rateLimit.success) {
+    return NextResponse.json(
+      { error: "Too many reports. Please wait before submitting again." },
+      { status: 429 }
+    );
   }
 
   // Validate input

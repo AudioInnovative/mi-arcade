@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
 // GET comments for a game
 export async function GET(
@@ -56,6 +57,15 @@ export async function POST(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Rate limit by user ID
+  const rateLimit = checkRateLimit(`comments:${user.id}`, RATE_LIMITS.comments);
+  if (!rateLimit.success) {
+    return NextResponse.json(
+      { error: "Too many comments. Please wait before posting again." },
+      { status: 429 }
+    );
   }
 
   // Validate content
@@ -116,14 +126,28 @@ export async function DELETE(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Verify ownership
+  // Verify ownership or admin status
   const { data: comment } = await supabase
     .from("comments")
     .select("user_id")
     .eq("id", commentId)
     .single();
 
-  if (!comment || comment.user_id !== user.id) {
+  if (!comment) {
+    return NextResponse.json({ error: "Comment not found" }, { status: 404 });
+  }
+
+  // Check if user is admin
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("is_admin")
+    .eq("id", user.id)
+    .single();
+
+  const isAdmin = profile?.is_admin === true;
+  const isOwner = comment.user_id === user.id;
+
+  if (!isOwner && !isAdmin) {
     return NextResponse.json({ error: "Not authorized" }, { status: 403 });
   }
 

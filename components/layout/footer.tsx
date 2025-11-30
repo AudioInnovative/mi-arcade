@@ -76,7 +76,7 @@ export function Footer() {
             © {new Date().getFullYear()} Mi Arcade. All rights reserved.
           </p>
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
-            <Link href="/report" className="hover:text-primary transition-colors">
+            <Link href="/contact" className="hover:text-primary transition-colors">
               Report an Issue
             </Link>
           </div>

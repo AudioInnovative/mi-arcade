@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
 export async function POST(
   request: NextRequest,
@@ -7,6 +8,25 @@ export async function POST(
 ) {
   const { id } = await params;
   const supabase = await createClient();
+
+  // Require authentication to prevent play count manipulation
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Rate limit by user ID - max 1 play per game per minute
+  const rateLimit = checkRateLimit(`play:${user.id}:${id}`, { maxRequests: 1, windowMs: 60 * 1000 });
+  if (!rateLimit.success) {
+    // Silently succeed to not break UX, but don't increment
+    return NextResponse.json({ success: true, rateLimited: true });
+  }
+
+  // Validate game ID format (UUID)
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(id)) {
+    return NextResponse.json({ error: "Invalid game ID" }, { status: 400 });
+  }
 
   // Check if game_scores exists for this game
   const { data: existing } = await supabase

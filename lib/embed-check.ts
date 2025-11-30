@@ -66,11 +66,11 @@ export function checkEmbedUrl(url: string): EmbedCheckResult {
       }
     }
 
-    // Basic URL validation
-    if (!["http:", "https:"].includes(parsedUrl.protocol)) {
+    // Require HTTPS for security
+    if (parsedUrl.protocol !== "https:") {
       return {
         allowed: false,
-        reason: "Only HTTP and HTTPS URLs are allowed.",
+        reason: "Only HTTPS URLs are allowed for security.",
       };
     }
 
