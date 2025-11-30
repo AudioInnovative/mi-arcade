@@ -14,6 +14,9 @@ import {
   MessageSquare,
   Gamepad2,
   User,
+  Users,
+  Clock,
+  BarChart3,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useUser } from "@/hooks/use-user";
@@ -43,6 +46,12 @@ export default function AdminPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [filter, setFilter] = useState<"pending" | "resolved" | "all">("pending");
   const [processing, setProcessing] = useState<string | null>(null);
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    totalGames: 0,
+    totalCreators: 0,
+    pendingReports: 0,
+  });
 
   useEffect(() => {
     async function checkAdmin() {
@@ -62,6 +71,25 @@ export default function AdminPage() {
       
       setIsAdmin(true);
       fetchReports();
+      fetchStats();
+    }
+
+    async function fetchStats() {
+      const supabase = createClient();
+      
+      const [usersRes, gamesRes, creatorsRes, reportsRes] = await Promise.all([
+        supabase.from("profiles").select("id", { count: "exact", head: true }),
+        supabase.from("games").select("id", { count: "exact", head: true }).eq("status", "published"),
+        supabase.from("creators").select("id", { count: "exact", head: true }),
+        supabase.from("reports").select("id", { count: "exact", head: true }).eq("status", "pending"),
+      ]);
+
+      setStats({
+        totalUsers: usersRes.count || 0,
+        totalGames: gamesRes.count || 0,
+        totalCreators: creatorsRes.count || 0,
+        pendingReports: reportsRes.count || 0,
+      });
     }
 
     if (!userLoading) {
@@ -186,6 +214,30 @@ export default function AdminPage() {
       <div className="flex items-center gap-3 mb-8">
         <Shield className="h-8 w-8 text-neon-cyan" />
         <h1 className="font-heading text-3xl font-bold">Admin Panel</h1>
+      </div>
+
+      {/* Platform Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div className="p-4 rounded-lg bg-card border border-border">
+          <Users className="h-5 w-5 text-neon-cyan mb-2" />
+          <div className="text-2xl font-bold">{stats.totalUsers}</div>
+          <div className="text-sm text-muted-foreground">Total Users</div>
+        </div>
+        <div className="p-4 rounded-lg bg-card border border-border">
+          <Gamepad2 className="h-5 w-5 text-neon-purple mb-2" />
+          <div className="text-2xl font-bold">{stats.totalGames}</div>
+          <div className="text-sm text-muted-foreground">Published Games</div>
+        </div>
+        <div className="p-4 rounded-lg bg-card border border-border">
+          <BarChart3 className="h-5 w-5 text-tier-a mb-2" />
+          <div className="text-2xl font-bold">{stats.totalCreators}</div>
+          <div className="text-sm text-muted-foreground">Creators</div>
+        </div>
+        <div className="p-4 rounded-lg bg-card border border-border">
+          <AlertTriangle className={`h-5 w-5 mb-2 ${stats.pendingReports > 0 ? 'text-yellow-400' : 'text-green-400'}`} />
+          <div className="text-2xl font-bold">{stats.pendingReports}</div>
+          <div className="text-sm text-muted-foreground">Pending Reports</div>
+        </div>
       </div>
 
       {/* Filters */}

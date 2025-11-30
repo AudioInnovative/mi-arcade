@@ -42,6 +42,9 @@ interface GameScores {
   total_reactions: number;
   tier: string;
   weighted_score: number;
+  like_count?: number;
+  love_count?: number;
+  favorite_count?: number;
 }
 
 interface Game {
@@ -140,7 +143,10 @@ export default function DashboardPage() {
             play_count,
             total_reactions,
             tier,
-            weighted_score
+            weighted_score,
+            like_count,
+            love_count,
+            favorite_count
           )
         `)
         .eq("creator_id", user.id)
@@ -1108,7 +1114,7 @@ export default function DashboardPage() {
                                 <TierBadge tier={scores.tier} size="sm" />
                               )}
                             </div>
-                            <div className="grid grid-cols-3 gap-4 text-center">
+                            <div className="grid grid-cols-3 gap-4 text-center mb-3">
                               <div>
                                 <div className="text-lg font-semibold">{scores?.play_count || 0}</div>
                                 <div className="text-xs text-muted-foreground">Plays</div>
@@ -1122,6 +1128,17 @@ export default function DashboardPage() {
                                 <div className="text-xs text-muted-foreground">Score</div>
                               </div>
                             </div>
+                            {/* Reaction Breakdown */}
+                            {(scores?.total_reactions || 0) > 0 && (
+                              <div className="pt-3 border-t border-border">
+                                <div className="text-xs text-muted-foreground mb-2">Reaction Breakdown</div>
+                                <div className="flex gap-4 text-xs">
+                                  <span className="text-blue-400">👍 {scores?.like_count || 0}</span>
+                                  <span className="text-pink-400">❤️ {scores?.love_count || 0}</span>
+                                  <span className="text-yellow-400">⭐ {scores?.favorite_count || 0}</span>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         );
                       })

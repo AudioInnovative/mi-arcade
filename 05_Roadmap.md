@@ -93,12 +93,13 @@ This roadmap describes the planned phases for Mi Arcade, starting with MVP and o
 
 **Tech Tasks:**
 - [x] Implement `analytics_game_daily` table.
-- [ ] Implement charts in dashboard.
-- [x] Implement `reports` table and admin UI (basic).
+- [x] Implement charts in dashboard (basic bar chart component).
+- [x] Implement `reports` table and admin UI with stats.
 - [x] Blocklist domains in embed test logic.
+- [x] Daily scoring cron job (pg_cron scheduled).
 
 **Exit Criteria:**
-- [ ] Creators can view detailed analytics per game.
+- [x] Creators can view analytics per game.
 - [x] Reporting works end-to-end (user → admin → resolution).
 
 ---
