@@ -27,7 +27,7 @@ export const metadata: Metadata = {
   },
   description:
     "Discover, play, and share HTML5 games. Create your own arcade profile and showcase your games to the world.",
-  keywords: ["arcade", "games", "html5", "webgl", "indie games", "game portal", "free games", "online games", "browser games"],
+  keywords: ["arcade", "games", "html5", "webgl", "indie games", "game portal", "free games", "online games", "browser games", "vibe code", "vibe coding", "vibe coded games"],
   authors: [{ name: "Mi Arcade" }],
   creator: "Mi Arcade",
   publisher: "Mi Arcade",
