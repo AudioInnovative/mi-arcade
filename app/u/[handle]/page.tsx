@@ -1,9 +1,13 @@
 import { notFound } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
 import { Metadata } from "next";
-import { Gamepad2 } from "lucide-react";
+import { Gamepad2, Settings } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { GameCard } from "@/components/game/game-card";
 import { FollowButton } from "@/components/user/follow-button";
+import { ThemeSelector } from "@/components/theme-selector";
+import { getThemeById } from "@/lib/themes";
 import { createClient } from "@/lib/supabase/server";
 
 interface CreatorPageProps {
@@ -116,16 +120,18 @@ export default async function CreatorPage({ params }: CreatorPageProps) {
 
   const isOwnProfile = user?.id === profile.id;
 
-  // Default theme if none set
-  const theme = {
-    primary_color: "#00f5ff",
-    secondary_color: "#a855f7",
-  };
+  // Get theme from profile
+  const theme = getThemeById(profile.theme_id || "neon-cyan");
 
   return (
     <div className="min-h-screen">
-      {/* Banner */}
-      <div className="relative h-48 md:h-64 bg-gradient-to-br from-neon-cyan/30 to-neon-purple/30">
+      {/* Banner with theme colors */}
+      <div 
+        className="relative h-48 md:h-64"
+        style={{
+          background: `linear-gradient(135deg, ${theme.primary_color}30 0%, ${theme.secondary_color}30 100%)`
+        }}
+      >
         {profile.banner_url && (
           <Image
             src={profile.banner_url}
@@ -175,16 +181,29 @@ export default async function CreatorPage({ params }: CreatorPageProps) {
             </div>
 
             {/* Actions */}
-            {!isOwnProfile && (
-              <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3">
+              {isOwnProfile ? (
+                <>
+                  <ThemeSelector 
+                    currentThemeId={profile.theme_id || "neon-cyan"} 
+                    userId={profile.id} 
+                  />
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href="/dashboard">
+                      <Settings className="h-4 w-4 mr-2" />
+                      Edit Profile
+                    </Link>
+                  </Button>
+                </>
+              ) : (
                 <FollowButton 
                   userId={profile.id}
                   initialFollowing={isFollowing}
                   initialCount={followerCount}
                   showCount
                 />
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
 

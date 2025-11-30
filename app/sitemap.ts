@@ -5,6 +5,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const supabase = await createClient();
   const baseUrl = "https://miarcade.me";
 
+  // Game categories
+  const categories = [
+    "action", "adventure", "arcade", "board", "card", "casual",
+    "educational", "fighting", "horror", "multiplayer", "music",
+    "platformer", "puzzle", "racing", "rpg", "shooter",
+    "simulation", "sports", "strategy"
+  ];
+
   // Static pages
   const staticPages: MetadataRoute.Sitemap = [
     {
@@ -37,6 +45,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "daily",
       priority: 0.7,
     },
+    // Category pages
+    ...categories.map(cat => ({
+      url: `${baseUrl}/games/${cat}`,
+      lastModified: new Date(),
+      changeFrequency: "daily" as const,
+      priority: 0.7,
+    })),
   ];
 
   // Fetch published games

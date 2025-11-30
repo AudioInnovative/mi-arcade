@@ -12,6 +12,7 @@ import { Comments } from "@/components/game/comments";
 import { BookmarkButton } from "@/components/game/bookmark-button";
 import { ShareButtons } from "@/components/game/share-buttons";
 import { FullscreenButton } from "@/components/game/fullscreen-button";
+import { BannerAd } from "@/components/ads/ad-unit";
 import { createClient } from "@/lib/supabase/server";
 
 interface GamePageProps {
@@ -155,10 +156,8 @@ export default async function GamePage({ params }: GamePageProps) {
           </div>
         </div>
 
-        {/* Ad Placeholder */}
-        <div className="mb-6 p-4 border border-dashed border-border rounded-lg text-center text-muted-foreground bg-muted/30">
-          Ad Space - Top Banner
-        </div>
+        {/* Top Ad Banner */}
+        <BannerAd className="mb-6" />
 
         {/* Game Frame */}
         <div id="game-frame" className="relative mb-6 rounded-xl overflow-hidden border border-border bg-black">
@@ -227,10 +226,8 @@ export default async function GamePage({ params }: GamePageProps) {
           </div>
         </div>
 
-        {/* Ad Placeholder */}
-        <div className="mb-8 p-4 border border-dashed border-border rounded-lg text-center text-muted-foreground bg-muted/30">
-          Ad Space - Mid Banner
-        </div>
+        {/* Mid Ad Banner */}
+        <BannerAd className="mb-8" />
 
         {/* Comments Section */}
         <div className="mb-8 p-6 rounded-lg bg-card border border-border">
